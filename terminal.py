@@ -9,13 +9,13 @@ from gamestonk_terminal.helper_funcs import (
     check_positive,
     b_is_stock_market_open,
     plot_view_stock,
+    parse_known_args_and_warn,
 )
 from gamestonk_terminal.fundamental_analysis import fa_menu as fam
 from gamestonk_terminal.technical_analysis import ta_menu as tam
 from gamestonk_terminal.due_diligence import dd_menu as ddm
 from gamestonk_terminal.discovery import disc_menu as dm
 from gamestonk_terminal.sentiment import sen_menu as sm
-from gamestonk_terminal.prediction_techniques import pred_menu as pm
 from gamestonk_terminal.papermill import papermill_menu as mill
 from gamestonk_terminal import res_menu as rm
 from gamestonk_terminal import config_terminal as cfg
@@ -24,7 +24,6 @@ from gamestonk_terminal import config_terminal as cfg
 # warnings.simplefilter("always")
 
 
-# ----------------------------------------------------- LOAD -----------------------------------------------------
 def load(l_args, s_ticker, s_start, s_interval, df_stock):
     parser = argparse.ArgumentParser(
         prog="load", description=""" Load a stock in order to perform analysis"""
@@ -56,13 +55,11 @@ def load(l_args, s_ticker, s_start, s_interval, df_stock):
     )
 
     try:
-        (ns_parser, l_unknown_args) = parser.parse_known_args(l_args)
+        ns_parser = parse_known_args_and_warn(parser, l_args)
+
     except SystemExit:
         print("")
         return [s_ticker, s_start, s_interval, df_stock]
-
-    if l_unknown_args:
-        print(f"The following args couldn't be interpreted: {l_unknown_args}")
 
     # Update values:
     s_ticker = ns_parser.s_ticker
@@ -106,11 +103,10 @@ def load(l_args, s_ticker, s_start, s_interval, df_stock):
     return [s_ticker, s_start, s_interval, df_stock]
 
 
-# ----------------------------------------------------- VIEW -----------------------------------------------------
 def view(l_args, s_ticker, s_start, s_interval, df_stock):
     parser = argparse.ArgumentParser(
         prog="view",
-        description="Visualise historical data of a stock. An alpha_vantage key is necessary.",
+        description="Visualize historical data of a stock. An alpha_vantage key is necessary.",
     )
     if s_ticker:
         parser.add_argument(
@@ -154,17 +150,18 @@ def view(l_args, s_ticker, s_start, s_interval, df_stock):
         dest="n_type",
         type=check_positive,
         default=5,  # in case it's daily
-        help="1234 corresponds to types: 1. open; 2. high; 3.low; 4. close; while 14 corresponds to types: 1.open; 4. close",
+        help=(
+            "1234 corresponds to types: 1. open; 2. high; 3. low; 4. close; "
+            "while 14 corresponds to types: 1. open; 4. close"
+        ),
     )
 
     try:
-        (ns_parser, l_unknown_args) = parser.parse_known_args(l_args)
+        ns_parser = parse_known_args_and_warn(parser, l_args)
+
     except SystemExit:
         print("")
         return
-
-    if l_unknown_args:
-        print(f"The following args couldn't be interpreted: {l_unknown_args}")
 
     # Update values:
     s_ticker = ns_parser.s_ticker
@@ -228,7 +225,7 @@ def view(l_args, s_ticker, s_start, s_interval, df_stock):
     plot_view_stock(df_stock.iloc[:, ln_col_idx], ns_parser.s_ticker)
 
 
-# ----------------------------------------------------- HELP ------------------------------------------------------------------
+# ----------------------------------------------------- HELP ------------------------------------------------------------
 def print_help(s_ticker, s_start, s_interval, b_is_market_open):
     """Print help"""
     print("What do you want to do?")
@@ -275,7 +272,6 @@ def print_help(s_ticker, s_start, s_interval, b_is_market_open):
     print("")
 
 
-# -----------------------------------------------------------------------------------------------------------------------
 # pylint: disable=too-many-branches
 def main():
     """
@@ -320,10 +316,14 @@ def main():
 
     # Print first welcome message and help
     print("\nWelcome to Didier's Gamestonk Terminal\n")
-    print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
+    should_print_help = True
 
     # Loop forever and ever
     while True:
+        if should_print_help:
+            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
+            should_print_help = False
+
         # Get input command from user
         as_input = input("> ")
 
@@ -340,12 +340,12 @@ def main():
             print("The command selected doesn't exist\n")
             continue
 
+        b_quit = False
         if ns_known_args.opt == "help":
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
+            should_print_help = True
 
         elif (ns_known_args.opt == "quit") or (ns_known_args.opt == "q"):
-            print("Hope you made money today. Good bye my lover, good bye my friend.\n")
-            return
+            break
 
         elif ns_known_args.opt == "clear":
             print("Clearing stock ticker to be used for analysis")
@@ -353,103 +353,60 @@ def main():
             s_start = ""
 
         elif ns_known_args.opt == "load":
-            [s_ticker, s_start, s_interval, df_stock] = load(
+            s_ticker, s_start, s_interval, df_stock = load(
                 l_args, s_ticker, s_start, s_interval, df_stock
             )
 
         elif ns_known_args.opt == "view":
             view(l_args, s_ticker, s_start, s_interval, df_stock)
 
-        # DISCOVERY MENU
         elif ns_known_args.opt == "disc":
             b_quit = dm.disc_menu()
 
-            if b_quit:
-                print(
-                    "Hope you made money today. Good bye my lover, good bye my friend.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
-        # PAPERMILL MENU
         elif ns_known_args.opt == "mill":
             b_quit = mill.papermill_menu()
 
-            if b_quit:
-                print(
-                    "Hope you made money today. Good bye my lover, good bye my friend.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
-        # SENTIMENT MARKET
         elif ns_known_args.opt == "sen":
             b_quit = sm.sen_menu(s_ticker, s_start)
 
-            if b_quit:
-                print(
-                    "Hope you made money today. Good bye my lover, good bye my friend.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
-        # RESEARCH MENU
         elif ns_known_args.opt == "res":
             b_quit = rm.res_menu(s_ticker)
 
-            if b_quit:
-                print(
-                    "Hope you made money today. Good bye my lover, good bye my friend.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
-        # FUNDAMENTAL ANALYSIS MENU
         elif ns_known_args.opt == "fa":
             b_quit = fam.fa_menu(s_ticker, s_start, s_interval)
 
-            if b_quit:
-                print(
-                    "Hope you made money today. Good bye my lover, good bye my friend.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
-        # TECHNICAL ANALYSIS MENU
         elif ns_known_args.opt == "ta":
             b_quit = tam.ta_menu(df_stock, s_ticker, s_start, s_interval)
 
-            if b_quit:
-                print(
-                    "Hope you made money today. Good bye my lover, good bye my friend.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
-        # DUE DILIGENCE MENU
         elif ns_known_args.opt == "dd":
             b_quit = ddm.dd_menu(df_stock, s_ticker, s_start, s_interval)
 
-            if b_quit:
-                print(
-                    "Hope you made money today. Good bye my lover, good bye my friend.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
-        # PREDICTION TECHNIQUES
         elif ns_known_args.opt == "pred":
+
+            if not cfg.ENABLE_PREDICT:
+                print("Predict is not enabled in config_terminal.py")
+                print("Prediction menu is disabled")
+                print("")
+                continue
+
+            try:
+                # pylint: disable=import-outside-toplevel
+                from gamestonk_terminal.prediction_techniques import pred_menu as pm
+            except ModuleNotFoundError as e:
+                print("One of the optional packages seems to be missing")
+                print("Optional packages need to be installed")
+                print(e)
+                print("")
+                continue
+            except Exception as e:
+                print(e)
+                print("")
+                continue
 
             if s_interval == "1440min":
                 b_quit = pm.pred_menu(df_stock, s_ticker, s_start, s_interval)
-            # If stock data is intradaily, we need to get data again as prediction techniques work on daily adjusted data
+            # If stock data is intradaily, we need to get data again as prediction
+            # techniques work on daily adjusted data
             else:
                 try:
                     ts = TimeSeries(
@@ -468,20 +425,21 @@ def main():
                 except Exception as e:
                     print(e)
                     print("Either the ticker or the API_KEY are invalids. Try again!")
-
                     b_quit = False
                     return
 
-            if b_quit:
-                print(
-                    "Hope you enjoyed the terminal. Remember that stonks only go up. Diamond hands.\n"
-                )
-                return
-
-            print_help(s_ticker, s_start, s_interval, b_is_stock_market_open())
-
         else:
             print("Shouldn't see this command!")
+            continue
+
+        if b_quit:
+            break
+        else:
+            should_print_help = True
+
+    print(
+        "Hope you enjoyed the terminal. Remember that stonks only go up. Diamond hands.\n"
+    )
 
 
 if __name__ == "__main__":

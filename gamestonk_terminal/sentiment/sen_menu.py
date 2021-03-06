@@ -1,8 +1,9 @@
 import argparse
 from gamestonk_terminal.sentiment import reddit_api
 from gamestonk_terminal.sentiment import stocktwits_api
-from gamestonk_terminal.sentiment import twitter_api
 from gamestonk_terminal.sentiment import google_api
+
+from gamestonk_terminal import config_terminal as cfg
 
 
 # -----------------------------------------------------------------------------------------------------------------------
@@ -114,7 +115,7 @@ def sen_menu(s_ticker, s_start):
         elif ns_known_args.cmd == "popular":
             reddit_api.popular_tickers(l_args)
 
-        # ---------------------------------------------------- STOCKTWITS ---------------------------------------------------
+        # ---------------------------------------------------- STOCKTWITS -----------------------------------------------
         elif ns_known_args.cmd == "bullbear":
             stocktwits_api.bullbear(l_args, s_ticker)
 
@@ -127,11 +128,51 @@ def sen_menu(s_ticker, s_start):
         elif ns_known_args.cmd == "stalker":
             stocktwits_api.stalker(l_args)
 
-        # ----------------------------------------------------- TWITTER ---------------------------------------------------
+        # ----------------------------------------------------- TWITTER -------------------------------------------------
         elif ns_known_args.cmd == "infer":
+            if not cfg.ENABLE_PREDICT:
+                print("Predict is not enabled in config_terminal.py")
+                print("Twitter inference menu is disabled")
+                print("")
+                continue
+
+            try:
+                # pylint: disable=import-outside-toplevel
+                from gamestonk_terminal.sentiment import twitter_api
+            except ModuleNotFoundError as e:
+                print("One of the optional packages seems to be missing")
+                print("Optional packages need to be installed")
+                print(e)
+                print("")
+                continue
+            except Exception as e:
+                print(e)
+                print("")
+                continue
+
             twitter_api.inference(l_args, s_ticker)
 
         elif ns_known_args.cmd == "sentiment":
+            if not cfg.ENABLE_PREDICT:
+                print("Predict is not enabled in config_terminal.py")
+                print("Twitter sentiment menu is disabled")
+                print("")
+                continue
+
+            try:
+                # pylint: disable=import-outside-toplevel
+                from gamestonk_terminal.sentiment import twitter_api
+            except ModuleNotFoundError as e:
+                print("One of the optional packages seems to be missing")
+                print("Optional packages need to be installed")
+                print(e)
+                print("")
+                continue
+            except Exception as e:
+                print(e)
+                print("")
+                continue
+
             twitter_api.sentiment(l_args, s_ticker)
 
         # ----------------------------------------------------- GOOGLE ---------------------------------------------------
